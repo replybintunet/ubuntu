@@ -1,44 +1,60 @@
-# [Project name]
+# BintuNet Controller
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A live-stream restreaming dashboard that captures TikTok/YouTube/camera feeds and restreams them to YouTube and Facebook simultaneously via FFmpeg.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
+- `pnpm --filter @workspace/bintunet run dev` — run the frontend (auto-assigned port)
 - `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Admin password: `bintunet` (hardcoded in `artifacts/api-server/src/bintunet-routes.ts`)
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- API: Express 5 + `ws` WebSocket server + `express-session` + `memorystore`
+- No database — pure in-memory storage (`artifacts/api-server/src/storage.ts`)
+- No OpenAPI codegen — direct fetch calls with TypeScript types
+- Frontend: React + Vite + Tailwind v4 + shadcn/ui components
+- Build: esbuild (CJS bundle for server)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/api-server/src/bintunet-routes.ts` — all API + WebSocket routes
+- `artifacts/api-server/src/stream-manager.ts` — FFmpeg process management
+- `artifacts/api-server/src/storage.ts` — in-memory store for streams
+- `artifacts/api-server/src/tiktok-extractor.ts` — TikTok HLS URL extraction via streamlink
+- `artifacts/api-server/src/youtube-source.ts` — YouTube live URL resolution via yt-dlp
+- `artifacts/api-server/src/youtube-counter.ts` — YouTube subscriber/viewer count API
+- `artifacts/bintunet/src/types/schema.ts` — shared TypeScript types (StreamConfig, OverlayConfig)
+- `artifacts/bintunet/src/components/stream-card.tsx` — main per-stream control card
+- `artifacts/bintunet/src/components/overlay-admin.tsx` — broadcast overlay control panel
+- `artifacts/bintunet/src/components/live-preview.tsx` — HLS live preview via hls.js
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- **No OpenAPI / codegen** — direct fetch + TypeScript types shared via `artifacts/bintunet/src/types/schema.ts`
+- **In-memory storage** — no DB; streams lost on server restart (by design for this use-case)
+- **WebSocket** — `ws` library on raw `http.createServer`; exposed at `/ws` path in artifact.toml
+- **Session auth** — `express-session` + `memorystore`; password is `"bintunet"` (change in production)
+- **Overlay** — CSS-based preview in the UI; FFmpeg `drawtext`/`drawbox` filters applied server-side when streaming
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
-
-## User preferences
-
-_Populate as you build — explicit user instructions worth remembering across sessions._
+Users log in with a password, then add multiple simultaneous streams. Each stream can capture from TikTok (via streamlink), YouTube live (via yt-dlp), or a camera device/RTSP URL. Streams rebroadcast to YouTube RTMP and optionally Facebook RTMP. An Al Jazeera–style overlay system adds logos, lower-thirds, scrolling tickers, and live view counts. The Overlay Admin panel provides real-time control over all active streams. Invite links allow additional users to access the dashboard without knowing the password.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- **FFmpeg must be installed on the server** for streaming to work
+- **streamlink** must be installed for TikTok live preview
+- **yt-dlp** must be installed for YouTube source mode
+- The `/ws` WebSocket path is registered in both `artifact.toml` and handled in `index.ts` via `http.createServer`
+- Session secret comes from `SESSION_SECRET` env var (falls back to a dev default)
+- Logo uploads are stored in `artifacts/api-server/uploads/` — this directory must be writable
+
+## User preferences
+
+_Populate as you build._
 
 ## Pointers
 
