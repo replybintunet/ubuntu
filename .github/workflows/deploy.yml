@@ -45,5 +45,12 @@ jobs:
           # 3. Give the frontend development server 5 seconds to fully boot up
           sleep 5
           
-          # 4. Create an instant public web link matching the Vite port (8080)
+          # 4. Print the exact Tunnel Password you need for the web link
+          echo "========================================="
+          echo "YOUR TUNNEL PASSWORD IS:"
+          curl -s https://loca.lt/mytunnelpassword
+          echo ""
+          echo "========================================="
+          
+          # 5. Create an instant public web link matching the Vite port (8080)
           lt --port 8080
