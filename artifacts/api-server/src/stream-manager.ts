@@ -26,6 +26,13 @@ export function addWSClient(ws: WebSocket) {
   ws.on("close", () => wsClients.delete(ws));
 }
 
+export function broadcastGlobal(type: string, data: any) {
+  const json = JSON.stringify({ type, streamId: null, data });
+  wsClients.forEach((ws) => {
+    if (ws.readyState === ws.OPEN) ws.send(json);
+  });
+}
+
 function broadcast(msg: { type: string; streamId: string; data: any }) {
   const json = JSON.stringify(msg);
   wsClients.forEach((ws) => {

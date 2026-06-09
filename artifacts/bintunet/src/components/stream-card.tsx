@@ -543,13 +543,13 @@ export function StreamCard({ stream, logs, onStart, onStop, onRestart, onDelete,
                   data-testid={`overlay-preview-${stream.id}`}
                 >
                   {/* Animated gradient video area */}
-                  <div className="absolute inset-0 overflow-hidden preview-bg">
+                  <div className={`absolute inset-0 overflow-hidden ${isActive ? "preview-bg-live" : "preview-bg"}`}>
                     <div className="preview-orb-a absolute -top-[20%] -left-[10%] w-[65%] h-[65%] rounded-full"
-                      style={{ background: "radial-gradient(circle, #667eea 0%, transparent 70%)" }} />
+                      style={{ background: isActive ? "radial-gradient(circle, #ff3d00 0%, transparent 70%)" : "radial-gradient(circle, #667eea 0%, transparent 70%)" }} />
                     <div className="preview-orb-b absolute -bottom-[15%] -right-[5%] w-[55%] h-[55%] rounded-full"
-                      style={{ background: "radial-gradient(circle, #f857a6 0%, transparent 70%)" }} />
+                      style={{ background: isActive ? "radial-gradient(circle, #ff0057 0%, transparent 70%)" : "radial-gradient(circle, #f857a6 0%, transparent 70%)" }} />
                     <div className="preview-orb-c absolute top-[25%] right-[15%] w-[40%] h-[40%] rounded-full"
-                      style={{ background: "radial-gradient(circle, #4facfe 0%, transparent 70%)" }} />
+                      style={{ background: isActive ? "radial-gradient(circle, #ff6600 0%, transparent 70%)" : "radial-gradient(circle, #4facfe 0%, transparent 70%)" }} />
                     <div className="absolute inset-0 opacity-[0.04]"
                       style={{
                         backgroundImage: "linear-gradient(rgba(255,255,255,.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.8) 1px, transparent 1px)",

@@ -14,45 +14,19 @@ function formatCount(num: number): string {
   return String(num);
 }
 
-async function fetchYouTubeLiveCount(channelId: string): Promise<string | null> {
+async function fetchYouTubeSubscriberCount(channelId: string): Promise<string | null> {
   const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) return null;
 
   try {
-    const searchRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${encodeURIComponent(channelId)}&type=video&eventType=live&key=${apiKey}`
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${encodeURIComponent(channelId)}&key=${apiKey}`
     );
-    if (!searchRes.ok) return null;
-    const searchData = await searchRes.json();
-
-    if (!searchData.items || searchData.items.length === 0) {
-      const channelRes = await fetch(
-        `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${encodeURIComponent(channelId)}&key=${apiKey}`
-      );
-      if (!channelRes.ok) return null;
-      const channelData = await channelRes.json();
-      if (channelData.items?.[0]?.statistics?.subscriberCount) {
-        const subCount = parseInt(channelData.items[0].statistics.subscriberCount);
-        return `${formatCount(subCount)} Subscribers`;
-      }
-      return null;
-    }
-
-    const videoId = searchData.items[0].id.videoId;
-    const videoRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails,statistics&id=${videoId}&key=${apiKey}`
-    );
-    if (!videoRes.ok) return null;
-    const videoData = await videoRes.json();
-
-    const item = videoData.items?.[0];
-    if (item?.liveStreamingDetails?.concurrentViewers) {
-      const viewers = parseInt(item.liveStreamingDetails.concurrentViewers);
-      return `${formatCount(viewers)} watching`;
-    }
-    if (item?.statistics?.viewCount) {
-      const views = parseInt(item.statistics.viewCount);
-      return `${formatCount(views)} views`;
+    if (!res.ok) return null;
+    const data = await res.json();
+    const subCount = data.items?.[0]?.statistics?.subscriberCount;
+    if (subCount !== undefined) {
+      return formatCount(parseInt(subCount, 10));
     }
     return null;
   } catch {
@@ -85,7 +59,7 @@ export function writeOverlayTextFiles(streamId: string) {
   let headline = stream.overlayHeadline || "";
   const cached = liveCountCache.get(streamId);
   if (stream.overlayLiveCount && cached?.count) {
-    headline = cached.count;
+    headline = `${cached.count} Subscribers`;
   }
   fs.writeFileSync(headlinePath, headline, "utf-8");
   fs.writeFileSync(tickerPath, stream.overlayTickerText || "", "utf-8");
@@ -109,7 +83,7 @@ async function pollLiveCounts() {
       const now = Date.now();
       if (cached && now - cached.lastFetch < 25000) continue;
 
-      const count = await fetchYouTubeLiveCount(stream.youtubeChannelId);
+      const count = await fetchYouTubeSubscriberCount(stream.youtubeChannelId);
       if (count) {
         liveCountCache.set(stream.id, { count, lastFetch: now });
         writeOverlayTextFiles(stream.id);

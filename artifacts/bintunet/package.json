@@ -75,6 +75,7 @@
     "zod": "catalog:"
   },
   "dependencies": {
-    "hls.js": "^1.6.16"
+    "hls.js": "^1.6.16",
+    "qrcode.react": "^4.2.0"
   }
 }

@@ -16,6 +16,7 @@ import {
   addWSClient,
   applyOverlayChanges,
   isStreamActive,
+  broadcastGlobal,
 } from "./stream-manager";
 import { getLiveCount, writeOverlayTextFiles as updateOverlayTextFiles, cleanupOverlayFiles } from "./youtube-counter";
 import { getTikTokStreamUrl } from "./tiktok-extractor";
@@ -48,6 +49,7 @@ declare module "express-session" {
 const PASSWORD = "bintunet";
 
 let inviteToken: string = crypto.randomBytes(6).toString("hex");
+let qrScanCount = 0;
 
 export async function registerBintunetRoutes(
   httpServer: Server,
@@ -116,6 +118,28 @@ export async function registerBintunetRoutes(
       return res.status(401).json({ message: "Invalid or expired invite link." });
     }
     req.session.authenticated = true;
+    res.json({ success: true });
+  });
+
+  app.get("/api/qr/track", (req, res) => {
+    qrScanCount++;
+    broadcastGlobal("qr_scan", { count: qrScanCount });
+    const cb = (req.query.cb as string) || "/";
+    try {
+      const target = decodeURIComponent(cb);
+      res.redirect(target);
+    } catch {
+      res.redirect("/");
+    }
+  });
+
+  app.get("/api/qr/count", requireAuth, (_req, res) => {
+    res.json({ count: qrScanCount });
+  });
+
+  app.post("/api/qr/reset", requireAuth, (_req, res) => {
+    qrScanCount = 0;
+    broadcastGlobal("qr_scan", { count: 0 });
     res.json({ success: true });
   });
 

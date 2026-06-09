@@ -8,7 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { StreamCard } from "@/components/stream-card";
 import { OverlayAdmin } from "@/components/overlay-admin";
-import { Plus, Radio, LogOut, Wifi, WifiOff, Link, Copy, RefreshCw, X } from "lucide-react";
+import { SubscriberWidget } from "@/components/subscriber-widget";
+import { Plus, Radio, LogOut, Wifi, WifiOff, Link, Copy, RefreshCw, X, Tv2 } from "lucide-react";
 import type { StreamConfig } from "@/types/schema";
 
 function InviteModal({ onClose }: { onClose: () => void }) {
@@ -47,9 +48,12 @@ function InviteModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
       <div
-        className="w-full max-w-md rounded-xl border bg-card shadow-xl p-6 space-y-5"
+        className="w-full max-w-md rounded-2xl border bg-card shadow-2xl p-6 space-y-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
@@ -100,8 +104,8 @@ function InviteModal({ onClose }: { onClose: () => void }) {
           </p>
         </div>
 
-        <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
-          <p className="text-xs font-semibold text-foreground">How it works</p>
+        <div className="rounded-xl border bg-muted/30 p-3 space-y-1">
+          <p className="text-xs font-semibold">How it works</p>
           <ul className="text-xs text-muted-foreground space-y-0.5 list-disc list-inside">
             <li>Send the link to anyone you want to invite</li>
             <li>They click the link — no password needed</li>
@@ -252,47 +256,78 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background">
       {showInvite && <InviteModal onClose={() => setShowInvite(false)} />}
 
-      <header className="sticky top-0 z-40 border-b bg-card/80 backdrop-blur-sm">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-9 h-9 rounded-md bg-primary/10">
-              <Radio className="w-5 h-5 text-primary" />
+      {/* Draggable floating subscriber count widget */}
+      <SubscriberWidget streams={streams} />
+
+      <header className="sticky top-0 z-40 border-b bg-card/90 backdrop-blur-md">
+        <div className="max-w-5xl mx-auto px-4 py-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div
+              className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0"
+              style={{
+                background: "linear-gradient(135deg, rgba(var(--primary)/0.2) 0%, rgba(var(--primary)/0.08) 100%)",
+                border: "1px solid rgba(var(--primary)/0.25)",
+              }}
+            >
+              <Tv2 className="w-4 h-4 text-primary" />
             </div>
-            <div>
-              <h1 className="text-lg font-bold tracking-tight leading-none">BintuNet</h1>
-              <p className="text-xs text-muted-foreground">Stream Control Panel</p>
+            <div className="leading-none">
+              <h1 className="text-base font-black tracking-tight text-foreground">BintuNet</h1>
+              <p className="text-[10px] text-muted-foreground font-medium tracking-widest uppercase leading-tight mt-px">
+                Control Room
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-1.5">
             {activeCount > 0 && (
-              <Badge variant="default" className="text-xs" data-testid="badge-active-count">
+              <Badge
+                variant="default"
+                className="text-xs gap-1 font-bold"
+                data-testid="badge-active-count"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                 {activeCount} Live
               </Badge>
             )}
-            <Badge variant="secondary" className="text-xs gap-1" data-testid="badge-ws-status">
-              {isConnected ? <><Wifi className="w-3 h-3" /> Connected</> : <><WifiOff className="w-3 h-3" /> Offline</>}
+            <Badge
+              variant="secondary"
+              className="text-xs gap-1"
+              data-testid="badge-ws-status"
+            >
+              {isConnected ? (
+                <><Wifi className="w-3 h-3 text-emerald-500" /><span className="hidden sm:inline">Online</span></>
+              ) : (
+                <><WifiOff className="w-3 h-3 text-muted-foreground" /><span className="hidden sm:inline">Offline</span></>
+              )}
             </Badge>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowInvite(true)}
-              className="gap-1.5 hidden sm:flex"
+              className="gap-1.5 hidden sm:flex text-xs h-7 px-2.5"
               data-testid="button-invite"
             >
-              <Link className="w-3.5 h-3.5" />
+              <Link className="w-3 h-3" />
               Invite
             </Button>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setShowInvite(true)}
-              className="sm:hidden"
+              className="sm:hidden w-7 h-7"
               data-testid="button-invite-mobile"
             >
-              <Link className="w-4 h-4" />
+              <Link className="w-3.5 h-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => logout()} data-testid="button-logout">
-              <LogOut className="w-4 h-4" />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => logout()}
+              className="w-7 h-7"
+              data-testid="button-logout"
+            >
+              <LogOut className="w-3.5 h-3.5" />
             </Button>
           </div>
         </div>
@@ -318,10 +353,10 @@ export default function Dashboard() {
 
         {streams.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
               <Radio className="w-8 h-8 text-primary" />
             </div>
-            <h3 className="text-lg font-medium mb-2">No streams yet</h3>
+            <h3 className="text-lg font-semibold mb-2">No streams yet</h3>
             <p className="text-sm text-muted-foreground mb-6 max-w-sm">
               Add a stream to start broadcasting. Capture from TikTok, YouTube live, or any camera — and restream to YouTube and Facebook simultaneously.
             </p>
