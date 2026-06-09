@@ -26,18 +26,25 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           pip install streamlink yt-dlp
+          # Install localtunnel globally to expose the web interface safely
+          npm install -g localtunnel
 
       - name: Install project dependencies
         run: pnpm install --ignore-scripts
 
-      - name: Start Frontend UI and Backend
-        run: |
-          # This starts your project blocks in the background so the tunnel can catch them
-          pnpm --filter @workspace/api-server run build
-          pnpm run dev & 
+      - name: Launch BintuNet & Expose Frontpage
         env:
           PORT: 8080
-
-      - name: Create Access Link
-        # This opens a secure window into the runner machine
-        uses: mxschmitt/action-tmate@v3
+        run: |
+          # 1. Build the API Server
+          pnpm --filter @workspace/api-server run build
+          
+          # 2. Boot up the project in the background (Defaults to port 5173 or 3000)
+          pnpm run dev &
+          
+          # 3. Give the frontend 5 seconds to fully initialize
+          sleep 5
+          
+          # 4. Create an instant public web link for your frontend interface
+          # Change 5173 to 3000 if your local UI runs on port 3000
+          lt --port 5173
