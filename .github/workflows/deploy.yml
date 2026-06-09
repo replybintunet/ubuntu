@@ -26,48 +26,61 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           pip install streamlink yt-dlp
-          npm install -g localtunnel serve
+          npm install -g localtunnel
 
       - name: Install project dependencies
         run: pnpm install --ignore-scripts
 
-      - name: Build API Server
-        env:
-          PORT: 8080
-          BASE_PATH: /
-        run: pnpm --filter @workspace/api-server run build
-
-      - name: Build Frontend
-        env:
-          PORT: 8080
-          BASE_PATH: /
+      - name: Build frontend
         run: pnpm --filter @workspace/bintunet run build
 
-      - name: Print tunnel password
-        run: |
-          echo "========================================="
-          echo "YOUR TUNNEL PASSWORD IS:"
-          curl -s https://loca.lt/mytunnelpassword
-          echo ""
-          echo "========================================="
+      - name: Build API server
+        run: pnpm --filter @workspace/api-server run build
 
-      - name: Launch BintuNet & Expose Frontpage
+      - name: Upload frontend build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bintunet-frontend
+          path: artifacts/bintunet/dist/public/
+          retention-days: 7
+
+      - name: Launch BintuNet & expose frontend
         env:
           PORT: 8080
           NODE_ENV: production
         run: |
-          # 1. Start the API server in the background
+          # Start the API server — it serves both /api and the built frontend
           node artifacts/api-server/dist/index.mjs &
-          
-          # 2. Wait for the API server to be ready
-          sleep 10
-          
-          # 3. Serve the frontend and proxy /api requests to the backend
-          # The --proxy flag ensures your JSON requests reach the API instead of returning HTML
-          serve artifacts/bintunet/dist/public --single --proxy http://localhost:8080 -l 3000 &
-          
-          # 4. Wait for the frontend server
           sleep 5
-          
-          # 5. Expose the frontend via localtunnel
-          lt --port 3000
+
+          # Fetch the tunnel password upfront so it's clearly visible
+          TUNNEL_PASS=$(curl -s https://loca.lt/mytunnelpassword)
+
+          # Start localtunnel and capture its output to extract the public URL
+          lt --port 8080 2>&1 | tee /tmp/lt.log &
+          LT_PID=$!
+
+          # Wait until localtunnel prints the URL (up to 30 seconds)
+          URL=""
+          for i in $(seq 1 15); do
+            URL=$(grep -o 'https://[a-zA-Z0-9-]*\.loca\.lt' /tmp/lt.log 2>/dev/null | head -1)
+            if [ -n "$URL" ]; then
+              break
+            fi
+            sleep 2
+          done
+
+          echo ""
+          echo "╔══════════════════════════════════════════════════╗"
+          echo "║           BINTUNET FRONTEND IS LIVE               ║"
+          echo "╠══════════════════════════════════════════════════╣"
+          echo "║  URL      : $URL"
+          echo "║  Password : $TUNNEL_PASS"
+          echo "╚══════════════════════════════════════════════════╝"
+          echo ""
+          echo "Open the URL above in your browser."
+          echo "When prompted for a password, enter: $TUNNEL_PASS"
+          echo ""
+
+          # Keep the tunnel alive for the rest of the job
+          wait $LT_PID
