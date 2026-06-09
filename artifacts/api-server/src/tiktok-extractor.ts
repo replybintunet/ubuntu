@@ -191,7 +191,8 @@ async function getStreamFromPageData(username: string): Promise<TikTokStreamInfo
   }
 }
 
-export async function getTikTokStreamInfo(username: string): Promise<TikTokStreamInfo> {
+export async function getTikTokStreamInfo(rawUsername: string): Promise<TikTokStreamInfo> {
+  const username = rawUsername.replace(/^@+/, "").trim();
   let roomId = await getRoomIdFromPage(username);
   if (!roomId) {
     roomId = await getRoomIdFromApi(username);
