@@ -56,14 +56,18 @@ jobs:
           PORT: 8080
           NODE_ENV: production
         run: |
-          # Start the API server on port 8080
+          # 1. Start the API server in the background
           node artifacts/api-server/dist/index.mjs &
-
-          # Serve the built frontend static files on port 3000
-          serve artifacts/bintunet/dist/public --single -l 3000 &
-
-          # Wait for servers to initialize
+          
+          # 2. Wait for the API server to be ready
+          sleep 10
+          
+          # 3. Serve the frontend and proxy /api requests to the backend
+          # The --proxy flag ensures your JSON requests reach the API instead of returning HTML
+          serve artifacts/bintunet/dist/public --single --proxy http://localhost:8080 -l 3000 &
+          
+          # 4. Wait for the frontend server
           sleep 5
-
-          # Expose the frontend
+          
+          # 5. Expose the frontend via localtunnel
           lt --port 3000
