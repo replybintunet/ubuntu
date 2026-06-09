@@ -25,7 +25,7 @@ export class MemStorage implements IStorage {
     const stream: StreamConfig = {
       id,
       sourceType: data.sourceType || "tiktok",
-      tiktokUsername: data.tiktokUsername || "",
+      tiktokUsername: (data.tiktokUsername || "").replace(/^@+/, "").trim(),
       youtubeSourceUrl: data.youtubeSourceUrl || "",
       cameraDevice: data.cameraDevice || "/dev/video0",
       youtubeStreamKey: data.youtubeStreamKey || "",
@@ -57,7 +57,11 @@ export class MemStorage implements IStorage {
   updateStream(id: string, data: Partial<StreamConfig>): StreamConfig | undefined {
     const stream = this.streams.get(id);
     if (!stream) return undefined;
-    const updated = { ...stream, ...data, id };
+    const normalized = { ...data };
+    if (typeof normalized.tiktokUsername === "string") {
+      normalized.tiktokUsername = normalized.tiktokUsername.replace(/^@+/, "").trim();
+    }
+    const updated = { ...stream, ...normalized, id };
     this.streams.set(id, updated);
     return updated;
   }
