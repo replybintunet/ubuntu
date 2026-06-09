@@ -31,27 +31,34 @@ jobs:
       - name: Install project dependencies
         run: pnpm install --ignore-scripts
 
-      - name: Launch BintuNet & Expose Frontpage
-        env:
-          PORT: 8080
-          BASE_PATH: /
+      - name: Build API Server
+        run: pnpm --filter @workspace/api-server run build
+
+      - name: Build Frontend
+        run: pnpm --filter @workspace/bintunet run build
+
+      - name: Print tunnel password
         run: |
-          # 1. Build the API Server
-          pnpm --filter @workspace/api-server run build
-          
-          # 2. Build the Frontend
-          pnpm --filter @workspace/bintunet run build
-          
-          # 3. Print the Tunnel Password
           echo "========================================="
           echo "YOUR TUNNEL PASSWORD IS:"
           curl -s https://loca.lt/mytunnelpassword
           echo ""
           echo "========================================="
-          
-          # 4. Corrected path: point to the actual output folder
-          npx serve bintunet/dist/public --port 8080 &
-          
-          # 5. Wait for server and expose
+
+      - name: Launch BintuNet & Expose Frontpage
+        env:
+          PORT: 8080
+          NODE_ENV: production
+        run: |
+          # Start the API server (backend) on port 8080
+          node artifacts/api-server/dist/index.mjs &
+
+          # Serve the built frontend static files on port 3000
+          # --single rewrites all 404s to index.html (required for React Router)
+          serve artifacts/bintunet/dist/public --single -l 3000 &
+
+          # Wait for both servers to be ready
           sleep 5
-          lt --port 8080
+
+          # Expose the frontend via localtunnel
+          lt --port 3000
