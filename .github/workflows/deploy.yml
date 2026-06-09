@@ -26,7 +26,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           pip install streamlink yt-dlp
-          # Install localtunnel globally to expose the web interface safely
           npm install -g localtunnel
 
       - name: Install project dependencies
@@ -36,15 +35,14 @@ jobs:
         env:
           PORT: 8080
         run: |
-          # 1. Build the API Server
+          # 1. Build the API Server backend
           pnpm --filter @workspace/api-server run build
           
-          # 2. Boot up the project in the background (Defaults to port 5173 or 3000)
-          pnpm run dev &
+          # 2. Boot up ONLY the frontend application workspace in the background
+          pnpm --filter @workspace/bintunet run dev &
           
-          # 3. Give the frontend 5 seconds to fully initialize
+          # 3. Give the frontend development server 5 seconds to fully boot up
           sleep 5
           
-          # 4. Create an instant public web link for your frontend interface
-          # Change 5173 to 3000 if your local UI runs on port 3000
+          # 4. Create an instant public web link for the frontend port (Vite defaults to 5173)
           lt --port 5173
