@@ -26,7 +26,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           pip install streamlink yt-dlp
-          npm install -g localtunnel
+          npm install -g localtunnel serve
 
       - name: Install project dependencies
         run: pnpm install --ignore-scripts
@@ -36,21 +36,24 @@ jobs:
           PORT: 8080
           BASE_PATH: /
         run: |
-          # 1. Build the API Server backend
+          # 1. Build the API Server
           pnpm --filter @workspace/api-server run build
           
-          # 2. Boot up ONLY the frontend application workspace in the background
-          pnpm --filter @workspace/bintunet run dev &
+          # 2. Build the Frontend into static files
+          pnpm --filter @workspace/bintunet run build
           
-          # 3. Give the frontend development server 5 seconds to fully boot up
-          sleep 5
-          
-          # 4. Print the exact Tunnel Password you need for the web link
+          # 3. Print the Tunnel Password
           echo "========================================="
           echo "YOUR TUNNEL PASSWORD IS:"
           curl -s https://loca.lt/mytunnelpassword
           echo ""
           echo "========================================="
           
-          # 5. Create an instant public web link matching the Vite port (8080)
+          # 4. Serve the static build folder directly
+          npx serve bintunet/dist/public --port 8080 &
+          
+          # 5. Give it a moment to start
+          sleep 5
+          
+          # 6. Create the public link
           lt --port 8080
