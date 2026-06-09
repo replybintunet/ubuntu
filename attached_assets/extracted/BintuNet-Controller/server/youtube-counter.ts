@@ -15,7 +15,7 @@ function formatCount(num: number): string {
 }
 
 async function fetchYouTubeLiveCount(channelId: string): Promise<string | null> {
-  const apiKey = process.env.GOOGLE_API_KEY;
+  const apiKey = process.env.YOUTUBE_API_KEY;
   if (!apiKey) return null;
 
   try {
