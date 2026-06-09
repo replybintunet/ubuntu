@@ -18,7 +18,7 @@ import {
   isStreamActive,
 } from "./stream-manager";
 import { getLiveCount, writeOverlayTextFiles as updateOverlayTextFiles, cleanupOverlayFiles } from "./youtube-counter";
-import { getTikTokStreamInfo } from "./tiktok-extractor";
+import { getTikTokStreamUrl } from "./tiktok-extractor";
 
 const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
@@ -222,13 +222,14 @@ export async function registerBintunetRoutes(
       if (!stream) return res.status(404).json({ message: "Stream not found" });
       if (!stream.tiktokUsername) return res.status(400).json({ message: "No TikTok username set" });
 
-      const info = await getTikTokStreamInfo(stream.tiktokUsername);
+      const url = await getTikTokStreamUrl(stream.tiktokUsername, stream.quality || "best");
+      const isHls = url.includes(".m3u8");
       res.json({
-        isLive: info.isLive,
-        hlsUrl: info.hlsUrl || null,
-        flvUrl: info.flvUrls.sd || info.flvUrls.ld || info.flvUrls.hd || null,
-        title: info.title || null,
-        roomId: info.roomId,
+        isLive: true,
+        hlsUrl: isHls ? url : null,
+        flvUrl: isHls ? null : url,
+        title: null,
+        roomId: "streamlink",
       });
     } catch (e: any) {
       res.status(400).json({ message: e.message, isLive: false });
@@ -254,13 +255,14 @@ export async function registerBintunetRoutes(
 
   app.get("/api/preview/:username", requireAuth, async (req, res) => {
     try {
-      const info = await getTikTokStreamInfo(req.params.username);
+      const url = await getTikTokStreamUrl(req.params.username, "best");
+      const isHls = url.includes(".m3u8");
       res.json({
-        isLive: info.isLive,
-        hlsUrl: info.hlsUrl || null,
-        flvUrl: info.flvUrls.sd || info.flvUrls.ld || info.flvUrls.hd || null,
-        title: info.title || null,
-        roomId: info.roomId,
+        isLive: true,
+        hlsUrl: isHls ? url : null,
+        flvUrl: isHls ? null : url,
+        title: null,
+        roomId: "streamlink",
       });
     } catch (e: any) {
       res.status(400).json({ message: e.message, isLive: false });

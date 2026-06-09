@@ -2,7 +2,7 @@ import { ChildProcess, spawn } from "child_process";
 import fs from "fs";
 import { storage } from "./storage";
 import { logger } from "./lib/logger";
-import { getTikTokStreamInfo, pickBestUrl } from "./tiktok-extractor";
+import { getTikTokStreamUrl } from "./tiktok-extractor";
 import { getYouTubeStreamUrl } from "./youtube-source";
 import { writeOverlayTextFiles, cleanupTextFiles, getHeadlineTextFilePath, getTickerTextFilePath, startLiveCountPolling } from "./youtube-counter";
 import type { WebSocket } from "ws";
@@ -361,9 +361,7 @@ async function resolveInputUrl(stream: StreamConfig): Promise<{ url: string; sou
   }
 
   if (!stream.tiktokUsername) throw new Error("TikTok username is required");
-  const info = await getTikTokStreamInfo(stream.tiktokUsername);
-  const url = pickBestUrl(info, stream.quality);
-  if (!url) throw new Error("Could not get a valid TikTok stream URL. Is the user live?");
+  const url = await getTikTokStreamUrl(stream.tiktokUsername, stream.quality || "best");
   return { url, sourceType: "tiktok" };
 }
 
