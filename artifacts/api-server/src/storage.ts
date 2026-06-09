@@ -49,6 +49,11 @@ export class MemStorage implements IStorage {
       overlayTickerSpeed: data.overlayTickerSpeed ?? 80,
       overlayLiveCount: data.overlayLiveCount ?? false,
       youtubeChannelId: data.youtubeChannelId || "",
+      overlayQrEnabled: data.overlayQrEnabled ?? false,
+      overlayQrUrl: data.overlayQrUrl || "",
+      overlayQrLabel: data.overlayQrLabel || "BUY ME COFFEE",
+      overlaySocialEnabled: data.overlaySocialEnabled ?? false,
+      overlaySocialHandle: data.overlaySocialHandle || "",
     };
     this.streams.set(id, stream);
     return stream;

@@ -16,6 +16,7 @@ import {
   Video, Camera, Radio, Info, Wifi, Usb, HelpCircle
 } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
+import { QRCodeSVG } from "qrcode.react";
 import type { StreamConfig } from "@/types/schema";
 import { LivePreview } from "./live-preview";
 
@@ -563,9 +564,9 @@ export function StreamCard({ stream, logs, onStart, onStop, onRestart, onDelete,
                   {stream.overlayLogoPath && (
                     <div className={`absolute ${
                       stream.overlayLogoPosition === "top-left" ? "top-2 left-2" :
-                      stream.overlayLogoPosition === "top-right" ? "top-2 right-2" :
+                      stream.overlayLogoPosition === "top-right" ? "top-2 right-12" :
                       stream.overlayLogoPosition === "bottom-left" ? "bottom-16 left-2" :
-                      "bottom-16 right-2"
+                      "bottom-16 right-12"
                     }`}>
                       {logoPreviewUrl ? (
                         <img src={logoPreviewUrl} alt="Logo" className={`w-8 h-8 object-contain rounded ${previewAnimClass}`} />
@@ -577,7 +578,25 @@ export function StreamCard({ stream, logs, onStart, onStop, onRestart, onDelete,
                     </div>
                   )}
 
-                  {(stream.overlayChannelName || stream.overlayHeadline) && (
+                  {/* QR code overlay — top-right (like screenshot) */}
+                  {stream.overlayQrEnabled && stream.overlayQrUrl && (
+                    <div className="absolute top-1.5 right-1.5 flex flex-col items-center gap-0.5">
+                      <div className="bg-white rounded p-1 shadow-lg">
+                        <QRCodeSVG value={stream.overlayQrUrl} size={32} level="L" bgColor="#ffffff" fgColor="#000000" />
+                      </div>
+                      {stream.overlayQrLabel && (
+                        <div
+                          className="text-white text-[5px] font-black px-1 py-0.5 rounded text-center leading-tight w-full"
+                          style={{ background: "#F97316" }}
+                        >
+                          {stream.overlayQrLabel}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Lower-third: channel name + sub count / headline */}
+                  {(stream.overlayChannelName || stream.overlayHeadline || stream.overlayLiveCount) && (
                     <div className="absolute bottom-6 left-0 flex items-stretch text-[8px] leading-tight">
                       {stream.overlayChannelName && (
                         <div
@@ -587,11 +606,31 @@ export function StreamCard({ stream, logs, onStart, onStop, onRestart, onDelete,
                           {stream.overlayChannelName}
                         </div>
                       )}
-                      {stream.overlayHeadline && (
+                      {stream.overlayLiveCount && liveCount ? (
+                        <div className="px-2 py-0.5 text-white bg-red-700/90 flex items-center gap-1 font-bold">
+                          <Youtube className="w-2 h-2 text-white shrink-0" />
+                          {liveCount} Subs
+                        </div>
+                      ) : stream.overlayHeadline ? (
                         <div className="px-2 py-1 text-white bg-gray-800/90 flex items-center">
                           {stream.overlayHeadline}
                         </div>
-                      )}
+                      ) : null}
+                    </div>
+                  )}
+
+                  {/* Social handle bar — bottom centre */}
+                  {stream.overlaySocialEnabled && stream.overlaySocialHandle && (
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
+                      <div className="flex items-center gap-1 bg-black/80 px-2 py-0.5 rounded text-[6px] text-slate-300 whitespace-nowrap">
+                        <span className="text-blue-400">FB</span>
+                        <span>·</span>
+                        <span className="text-pink-400">IG</span>
+                        <span>·</span>
+                        <SiTiktok className="w-2 h-2" />
+                        <span>·</span>
+                        <span className="text-white font-semibold">{stream.overlaySocialHandle}</span>
+                      </div>
                     </div>
                   )}
 

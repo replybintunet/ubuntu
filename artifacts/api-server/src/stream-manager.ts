@@ -1,5 +1,6 @@
 import { ChildProcess, spawn } from "child_process";
 import fs from "fs";
+import path from "path";
 import { storage } from "./storage";
 import { logger } from "./lib/logger";
 import { getTikTokStreamUrl } from "./tiktok-extractor";
@@ -20,6 +21,23 @@ interface StreamProcess {
 
 const activeStreams = new Map<string, StreamProcess>();
 const wsClients = new Set<WebSocket>();
+
+const uploadDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+function getQrPngPath(streamId: string): string {
+  return path.join(uploadDir, `qr_${streamId}.png`);
+}
+
+async function generateQrPng(streamId: string, url: string): Promise<boolean> {
+  try {
+    const QRCode = (await import("qrcode")).default;
+    await (QRCode as any).toFile(getQrPngPath(streamId), url, {
+      width: 220, margin: 2, color: { dark: "#000000", light: "#ffffff" },
+    });
+    return true;
+  } catch { return false; }
+}
 
 export function addWSClient(ws: WebSocket) {
   wsClients.add(ws);
@@ -176,6 +194,32 @@ function buildOverlayFilter(stream: StreamConfig, scaleW: number, scaleH: number
     }
   }
 
+  // QR overlay label (text drawn below the QR image in top-right)
+  if ((stream as any).overlayQrEnabled && (stream as any).overlayQrLabel) {
+    const qrW = Math.round(scaleW * 0.14);
+    const margin = Math.round(scaleW * 0.025);
+    const labelText = escapeDrawtext(((stream as any).overlayQrLabel as string).toUpperCase());
+    const labelFontSize = Math.max(9, Math.round(qrW * 0.18));
+    parts.push(
+      `drawtext=fontfile='${fontEsc}':text='${labelText}':fontcolor=white:fontsize=${labelFontSize}:box=1:boxcolor=0xF97316@0.96:boxborderw=${Math.round(labelFontSize * 0.35)}:x=w-text_w-${margin}:y=${margin + qrW + 4}`
+    );
+  }
+
+  // Social handle bar (bottom centre)
+  if ((stream as any).overlaySocialEnabled && (stream as any).overlaySocialHandle) {
+    const tickerH2 = stream.overlayTickerText ? Math.round(scaleH * 0.06) : 0;
+    const socialH = Math.round(scaleH * 0.055);
+    const socialY = scaleH - socialH - tickerH2;
+    const socialFontSize = Math.max(10, Math.round(socialH * 0.52));
+    const socialText = escapeDrawtext(`FB  IG  TikTok  ${(stream as any).overlaySocialHandle}`);
+    parts.push(
+      `drawbox=x=${Math.round(scaleW * 0.12)}:y=${socialY}:w=${Math.round(scaleW * 0.76)}:h=${socialH}:color=0x080a14@0.82:t=fill`
+    );
+    parts.push(
+      `drawtext=fontfile='${fontEsc}':text='${socialText}':fontcolor=0xDDDDDD:fontsize=${socialFontSize}:x=(w-text_w)/2:y=${socialY + Math.round(socialH * 0.18)}`
+    );
+  }
+
   return parts.join(",");
 }
 
@@ -257,16 +301,29 @@ function buildFFmpegArgs(
     args.push("-i", stream.overlayLogoPath);
   }
 
+  const hasQr = stream.overlayEnabled &&
+    !!(stream as any).overlayQrEnabled &&
+    !!(stream as any).overlayQrUrl &&
+    fs.existsSync(getQrPngPath(stream.id));
+  if (hasQr) {
+    args.push("-i", getQrPngPath(stream.id));
+  }
+
   args.push("-threads", "2");
 
-  const hasOverlayText = stream.overlayEnabled && (stream.overlayChannelName || stream.overlayHeadline || stream.overlayTickerText || (stream.overlayLiveCount && stream.youtubeChannelId));
+  const hasOverlayText = stream.overlayEnabled && (
+    stream.overlayChannelName || stream.overlayHeadline || stream.overlayTickerText ||
+    (stream.overlayLiveCount && stream.youtubeChannelId) ||
+    ((stream as any).overlayQrEnabled && (stream as any).overlayQrLabel) ||
+    ((stream as any).overlaySocialEnabled && (stream as any).overlaySocialHandle)
+  );
   const useTextfile = stream.overlayEnabled && true;
 
   if (useTextfile) {
     writeOverlayTextFiles(stream.id);
   }
 
-  if (hasLogo || hasOverlayText) {
+  if (hasLogo || hasQr || hasOverlayText) {
     const filterParts: string[] = [];
     filterParts.push(`[0:v]scale=${scale}:force_original_aspect_ratio=increase,crop=${scale}[base]`);
 
@@ -294,6 +351,15 @@ function buildFFmpegArgs(
       }
       filterParts.push(`[${currentLabel}][logo]overlay=${ox}:${oy}[withlogo]`);
       currentLabel = "withlogo";
+    }
+
+    if (hasQr) {
+      const qrInputIdx = hasLogo ? 2 : 1;
+      const qrW = Math.round(scaleW * 0.14);
+      const qrMargin = Math.round(scaleW * 0.025);
+      filterParts.push(`[${qrInputIdx}:v]scale=${qrW}:${qrW},format=rgba[qr]`);
+      filterParts.push(`[${currentLabel}][qr]overlay=main_w-overlay_w-${qrMargin}:${qrMargin}[withqr]`);
+      currentLabel = "withqr";
     }
 
     if (hasOverlayText) {
@@ -436,6 +502,11 @@ export async function startStream(streamId: string) {
     if (stream.facebookRtmpUrl) {
       outputs.push(`rtmps://live-api-s.facebook.com:443/rtmp/${stream.facebookRtmpUrl}`);
       sendLog(streamId, `Output: Facebook`);
+    }
+
+    if (stream.overlayEnabled && (stream as any).overlayQrEnabled && (stream as any).overlayQrUrl) {
+      sendLog(streamId, "Generating QR PNG for overlay...");
+      await generateQrPng(streamId, (stream as any).overlayQrUrl);
     }
 
     const ffmpegArgs = buildFFmpegArgs(stream, inputUrl, outputs, resolvedType);
@@ -591,12 +662,16 @@ export function restartStream(streamId: string) {
   }, 3000);
 }
 
-export function applyOverlayChanges(streamId: string) {
+export async function applyOverlayChanges(streamId: string) {
   const proc = activeStreams.get(streamId);
   if (!proc) return;
 
   const stream = storage.getStream(streamId);
   if (!stream) return;
+
+  if (stream.overlayEnabled && (stream as any).overlayQrEnabled && (stream as any).overlayQrUrl) {
+    await generateQrPng(streamId, (stream as any).overlayQrUrl);
+  }
 
   writeOverlayTextFiles(streamId);
 

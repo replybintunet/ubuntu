@@ -249,9 +249,9 @@
 }
 
 .preview-bg {
-  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #1a1040 100%);
-  background-size: 300% 300%;
-  animation: gradient-drift 9s ease infinite;
+  background: linear-gradient(160deg, #040608 0%, #060a12 25%, #07091a 50%, #050810 75%, #040608 100%);
+  background-size: 400% 400%;
+  animation: gradient-drift 14s ease infinite;
 }
 
 /* Live state — deeper, more vibrant broadcast feel */

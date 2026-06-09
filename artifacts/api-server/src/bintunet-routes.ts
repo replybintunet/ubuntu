@@ -161,7 +161,8 @@ export async function registerBintunetRoutes(
   const structuralOverlayFields = [
     "overlayEnabled", "overlayLogoPath", "overlayLogoPosition", "overlayLogoScale",
     "overlayLogoAnimation", "overlayBannerColor", "overlayTickerColor", "overlayTickerSpeed",
-    "overlayLiveCount",
+    "overlayLiveCount", "overlayQrEnabled", "overlayQrUrl", "overlayQrLabel",
+    "overlaySocialEnabled", "overlaySocialHandle",
   ];
 
   app.patch("/api/streams/:id", requireAuth, (req, res) => {

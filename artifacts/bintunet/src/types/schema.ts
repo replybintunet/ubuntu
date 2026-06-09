@@ -12,6 +12,11 @@ export type OverlayConfig = {
   overlayTickerSpeed: number;
   overlayLiveCount: boolean;
   youtubeChannelId: string;
+  overlayQrEnabled: boolean;
+  overlayQrUrl: string;
+  overlayQrLabel: string;
+  overlaySocialEnabled: boolean;
+  overlaySocialHandle: string;
 };
 
 export type StreamConfig = OverlayConfig & {

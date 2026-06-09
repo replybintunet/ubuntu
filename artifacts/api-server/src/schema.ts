@@ -3,7 +3,7 @@ import { z } from "zod";
 export const overlayConfigSchema = z.object({
   overlayEnabled: z.boolean().default(false),
   overlayLogoPath: z.string().default(""),
-  overlayLogoPosition: z.enum(["top-left", "top-right", "bottom-left", "bottom-right"]).default("top-right"),
+  overlayLogoPosition: z.enum(["top-left", "top-right", "bottom-left", "bottom-right"]).default("bottom-left"),
   overlayLogoScale: z.number().default(0.15),
   overlayLogoAnimation: z.enum(["none", "pulse", "breathe", "fade-in", "flash"]).default("none"),
   overlayChannelName: z.string().default(""),
@@ -14,6 +14,11 @@ export const overlayConfigSchema = z.object({
   overlayTickerSpeed: z.number().default(80),
   overlayLiveCount: z.boolean().default(false),
   youtubeChannelId: z.string().default(""),
+  overlayQrEnabled: z.boolean().default(false),
+  overlayQrUrl: z.string().default(""),
+  overlayQrLabel: z.string().default("BUY ME COFFEE"),
+  overlaySocialEnabled: z.boolean().default(false),
+  overlaySocialHandle: z.string().default(""),
 });
 
 export type OverlayConfig = z.infer<typeof overlayConfigSchema>;
