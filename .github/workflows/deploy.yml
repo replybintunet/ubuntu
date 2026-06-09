@@ -39,7 +39,7 @@ jobs:
           # 1. Build the API Server
           pnpm --filter @workspace/api-server run build
           
-          # 2. Build the Frontend into static files
+          # 2. Build the Frontend
           pnpm --filter @workspace/bintunet run build
           
           # 3. Print the Tunnel Password
@@ -49,11 +49,9 @@ jobs:
           echo ""
           echo "========================================="
           
-          # 4. Serve the static build folder directly
+          # 4. Corrected path: point to the actual output folder
           npx serve bintunet/dist/public --port 8080 &
           
-          # 5. Give it a moment to start
+          # 5. Wait for server and expose
           sleep 5
-          
-          # 6. Create the public link
           lt --port 8080
