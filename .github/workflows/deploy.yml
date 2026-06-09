@@ -34,6 +34,7 @@ jobs:
       - name: Launch BintuNet & Expose Frontpage
         env:
           PORT: 8080
+          BASE_PATH: /
         run: |
           # 1. Build the API Server backend
           pnpm --filter @workspace/api-server run build
@@ -44,5 +45,5 @@ jobs:
           # 3. Give the frontend development server 5 seconds to fully boot up
           sleep 5
           
-          # 4. Create an instant public web link for the frontend port (Vite defaults to 5173)
+          # 4. Create an instant public web link for the frontend port
           lt --port 5173
