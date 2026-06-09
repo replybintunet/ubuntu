@@ -30,10 +30,14 @@ jobs:
       - name: Install project dependencies
         run: pnpm install --ignore-scripts
 
-      - name: Build and Run BintuNet
-        # We define the PORT environment variable here so the api-server can boot safely
+      - name: Start Frontend UI and Backend
+        run: |
+          # This starts your project blocks in the background so the tunnel can catch them
+          pnpm --filter @workspace/api-server run build
+          pnpm run dev & 
         env:
           PORT: 8080
-        run: |
-          pnpm --filter @workspace/api-server run build
-          pnpm --filter @workspace/api-server start
+
+      - name: Create Access Link
+        # This opens a secure window into the runner machine
+        uses: mxschmitt/action-tmate@v3
