@@ -191,12 +191,32 @@ export function StreamCard({ stream, logs, onStart, onStop, onRestart, onDelete,
   const [overlayOpen, setOverlayOpen] = useState(false);
   const [logsOpen, setLogsOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [liveCount, setLiveCount] = useState<string | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isActive = stream.status === "streaming" || stream.status === "reconnecting";
   const config = statusConfig[stream.status];
   const sourceType = stream.sourceType || "tiktok";
   const SourceIcon = sourceTypeConfig[sourceType].icon;
+
+  useEffect(() => {
+    if (!stream.overlayLiveCount || !stream.youtubeChannelId) {
+      setLiveCount(null);
+      return;
+    }
+    const fetchCount = async () => {
+      try {
+        const res = await fetch(`/api/streams/${stream.id}/live-count`, { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.count) setLiveCount(data.count);
+        }
+      } catch {}
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 30000);
+    return () => clearInterval(interval);
+  }, [stream.id, stream.overlayLiveCount, stream.youtubeChannelId]);
 
   useEffect(() => {
     if (logsOpen && logEndRef.current) {
@@ -522,8 +542,22 @@ export function StreamCard({ stream, logs, onStart, onStop, onRestart, onDelete,
                   style={{ aspectRatio: stream.ratio === "mobile" ? "9/16" : "16/9", maxHeight: "200px" }}
                   data-testid={`overlay-preview-${stream.id}`}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-b from-gray-700 to-gray-900 flex items-center justify-center">
-                    <span className="text-gray-500 text-xs">Video Area</span>
+                  {/* Animated gradient video area */}
+                  <div className="absolute inset-0 overflow-hidden preview-bg">
+                    <div className="preview-orb-a absolute -top-[20%] -left-[10%] w-[65%] h-[65%] rounded-full"
+                      style={{ background: "radial-gradient(circle, #667eea 0%, transparent 70%)" }} />
+                    <div className="preview-orb-b absolute -bottom-[15%] -right-[5%] w-[55%] h-[55%] rounded-full"
+                      style={{ background: "radial-gradient(circle, #f857a6 0%, transparent 70%)" }} />
+                    <div className="preview-orb-c absolute top-[25%] right-[15%] w-[40%] h-[40%] rounded-full"
+                      style={{ background: "radial-gradient(circle, #4facfe 0%, transparent 70%)" }} />
+                    <div className="absolute inset-0 opacity-[0.04]"
+                      style={{
+                        backgroundImage: "linear-gradient(rgba(255,255,255,.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.8) 1px, transparent 1px)",
+                        backgroundSize: "24px 24px"
+                      }} />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-white/15 text-[10px] font-mono tracking-[0.3em] select-none">VIDEO</span>
+                    </div>
                   </div>
 
                   {stream.overlayLogoPath && (
@@ -714,7 +748,7 @@ export function StreamCard({ stream, logs, onStart, onStop, onRestart, onDelete,
                 {/* YouTube Live Count */}
                 <div className="space-y-3">
                   <Label className="text-sm flex items-center gap-2">
-                    <Youtube className="w-3.5 h-3.5" />
+                    <Youtube className="w-3.5 h-3.5 text-red-500" />
                     YouTube Live Count
                   </Label>
                   <div className="flex items-center gap-3">
@@ -727,18 +761,74 @@ export function StreamCard({ stream, logs, onStart, onStop, onRestart, onDelete,
                       Auto-show real viewer/subscriber count
                     </Label>
                   </div>
+
                   {stream.overlayLiveCount && (
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">YouTube Channel ID</Label>
-                      <Input
-                        placeholder="e.g. UCxxxxxxxxxxxxx"
-                        value={stream.youtubeChannelId}
-                        onChange={(e) => onUpdate(stream.id, { youtubeChannelId: e.target.value })}
-                        data-testid={`input-yt-channel-${stream.id}`}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Requires YouTube API key in server settings. Updates every 30s.
-                      </p>
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">YouTube Channel ID</Label>
+                        <Input
+                          placeholder="e.g. UCxxxxxxxxxxxxx"
+                          value={stream.youtubeChannelId}
+                          onChange={(e) => onUpdate(stream.id, { youtubeChannelId: e.target.value })}
+                          data-testid={`input-yt-channel-${stream.id}`}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Updates every 30s via YouTube Data API v3.
+                        </p>
+                      </div>
+
+                      {/* Live count display */}
+                      {stream.youtubeChannelId && (
+                        <div
+                          className="yt-count-badge rounded-xl overflow-hidden"
+                          style={{ background: "linear-gradient(135deg, #1a0000 0%, #2d0000 100%)", border: "1px solid rgba(255,0,0,0.35)" }}
+                          data-testid={`yt-count-display-${stream.id}`}
+                        >
+                          <div className="px-4 py-3 flex items-center gap-3">
+                            <div
+                              className="flex items-center justify-center w-10 h-10 rounded-lg shrink-0"
+                              style={{ background: "rgba(255,0,0,0.2)", border: "1px solid rgba(255,0,0,0.4)" }}
+                            >
+                              <Youtube className="w-5 h-5 text-red-500" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              {liveCount ? (
+                                <>
+                                  <p
+                                    className="text-xl font-bold leading-none tracking-tight"
+                                    style={{ color: "#fff" }}
+                                  >
+                                    {liveCount}
+                                  </p>
+                                  <p className="text-xs mt-0.5" style={{ color: "rgba(255,120,120,0.8)" }}>
+                                    Live on YouTube · auto-refreshes every 30s
+                                  </p>
+                                </>
+                              ) : (
+                                <>
+                                  <p className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.5)" }}>
+                                    Fetching count…
+                                  </p>
+                                  <p className="text-xs" style={{ color: "rgba(255,120,120,0.5)" }}>
+                                    Check your Channel ID and API key
+                                  </p>
+                                </>
+                              )}
+                            </div>
+                            <div className="flex flex-col items-end gap-1 shrink-0">
+                              <span className="flex items-center gap-1.5">
+                                <span
+                                  className="w-2 h-2 rounded-full animate-pulse"
+                                  style={{ backgroundColor: liveCount ? "#ff3333" : "#555" }}
+                                />
+                                <span className="text-[10px] font-mono" style={{ color: liveCount ? "#ff6666" : "#555" }}>
+                                  {liveCount ? "LIVE" : "WAIT"}
+                                </span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

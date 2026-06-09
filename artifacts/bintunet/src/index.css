@@ -217,6 +217,55 @@
   }
 }
 
+/* ── Animated gradient video preview background ── */
+@keyframes gradient-drift {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+
+@keyframes orb-float-a {
+  0%, 100% { transform: translate(0%, 0%) scale(1);    opacity: 0.35; }
+  33%      { transform: translate(14%, -12%) scale(1.12); opacity: 0.55; }
+  66%      { transform: translate(-8%, 16%) scale(0.9);  opacity: 0.28; }
+}
+
+@keyframes orb-float-b {
+  0%, 100% { transform: translate(0%, 0%) scale(1);     opacity: 0.28; }
+  40%      { transform: translate(-18%, 12%) scale(1.15); opacity: 0.45; }
+  70%      { transform: translate(12%, -14%) scale(0.88); opacity: 0.22; }
+}
+
+@keyframes orb-float-c {
+  0%, 100% { transform: translate(0%, 0%) scale(1);    opacity: 0.22; }
+  50%      { transform: translate(20%, 8%) scale(1.2); opacity: 0.38; }
+}
+
+.preview-bg {
+  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #1a1040 100%);
+  background-size: 300% 300%;
+  animation: gradient-drift 9s ease infinite;
+}
+
+.preview-orb-a {
+  animation: orb-float-a 13s ease-in-out infinite;
+}
+.preview-orb-b {
+  animation: orb-float-b 10s ease-in-out infinite;
+}
+.preview-orb-c {
+  animation: orb-float-c 16s ease-in-out infinite;
+}
+
+/* ── YouTube live count pulse ── */
+@keyframes count-glow {
+  0%, 100% { box-shadow: 0 0 8px 2px rgba(255, 0, 0, 0.4); }
+  50%      { box-shadow: 0 0 16px 6px rgba(255, 0, 0, 0.7); }
+}
+
+.yt-count-badge {
+  animation: count-glow 2.5s ease-in-out infinite;
+}
+
 /**
  * Using the elevate system.
  * Automatic contrast adjustment.
