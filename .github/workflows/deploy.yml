@@ -45,5 +45,5 @@ jobs:
           # 3. Give the frontend development server 5 seconds to fully boot up
           sleep 5
           
-          # 4. Create an instant public web link for the frontend port
-          lt --port 5173
+          # 4. Create an instant public web link matching the Vite port (8080)
+          lt --port 8080
