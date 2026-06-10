@@ -1,0 +1,82 @@
+name: Deploy BintuNet
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build & Deploy via SSH
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── 2. Setup pnpm ─────────────────────────────────────────────────
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      # ── 3. Setup Node.js with pnpm cache ──────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # ── 4. Install dependencies ────────────────────────────────────────
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ── 5. Build frontend (Vite) ───────────────────────────────────────
+      - name: Build frontend
+        run: PORT=3000 BASE_PATH=/ pnpm --filter @workspace/bintunet run build
+        env:
+          NODE_ENV: production
+
+      # ── 6. Build API server (esbuild) ─────────────────────────────────
+      - name: Build API server
+        run: pnpm --filter @workspace/api-server run build
+
+      # ── 7. Deploy to VPS via SSH ───────────────────────────────────────
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -e
+            cd ${{ secrets.DEPLOY_PATH || '~/bintunet' }}
+
+            echo "→ Pulling latest code..."
+            git pull origin main
+
+            echo "→ Installing dependencies..."
+            pnpm install --frozen-lockfile
+
+            echo "→ Building frontend..."
+            PORT=3000 BASE_PATH=/ pnpm --filter @workspace/bintunet run build
+
+            echo "→ Building API server..."
+            pnpm --filter @workspace/api-server run build
+
+            echo "→ Restarting with PM2..."
+            pm2 reload ecosystem.config.cjs --update-env || pm2 start ecosystem.config.cjs
+
+            pm2 save
+            echo "✓ Deploy complete"
+
+      # ── 8. Health check ────────────────────────────────────────────────
+      - name: Health check
+        run: |
+          sleep 5
+          curl --fail --retry 5 --retry-delay 3 \
+            "http://${{ secrets.SSH_HOST }}/api/auth/check" \
+            -o /dev/null -w "HTTP %{http_code}\n" \
+            || echo "Health check failed — check server logs"
