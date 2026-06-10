@@ -40,7 +40,11 @@ if (process.env.NODE_ENV === "production") {
 
   if (fs.existsSync(frontendDist)) {
     app.use(express.static(frontendDist));
-    app.get("*", (_req, res) => {
+    // SPA fallback — serve index.html for all non-API routes (Express 5 compatible)
+    app.use((req, res, next) => {
+      if (req.path.startsWith("/api") || req.path.startsWith("/uploads")) {
+        return next();
+      }
       res.sendFile(path.join(frontendDist, "index.html"));
     });
     logger.info({ frontendDist }, "Serving frontend static files");
