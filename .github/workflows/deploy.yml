@@ -24,7 +24,7 @@ jobs:
       - name: Install system tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg nginx
           pip install streamlink yt-dlp
           npm install -g localtunnel
 
@@ -48,43 +48,27 @@ jobs:
           path: artifacts/bintunet/dist/public/
           retention-days: 7
 
-      - name: Launch BintuNet & expose frontend
-        env:
-          PORT: 8080
-          NODE_ENV: production
+      - name: Configure nginx
         run: |
-          # Start the API server — it serves both /api and the built frontend
-          node artifacts/api-server/dist/index.mjs &
-          sleep 5
+          sudo tee /etc/nginx/sites-available/bintunet > /dev/null <<EOF
+          server {
+            listen 8080;
 
-          # Fetch the tunnel password upfront so it's clearly visible
-          TUNNEL_PASS=$(curl -s https://loca.lt/mytunnelpassword)
+            root $GITHUB_WORKSPACE/artifacts/bintunet/dist/public;
+            index index.html;
 
-          # Start localtunnel and capture its output to extract the public URL
-          lt --port 8080 2>&1 | tee /tmp/lt.log &
-          LT_PID=$!
+            # Proxy all API calls to the Node backend on port 9090
+            location /api {
+              proxy_pass http://127.0.0.1:9090;
+              proxy_http_version 1.1;
+              proxy_set_header Host \$host;
+              proxy_set_header X-Real-IP \$remote_addr;
+              proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            }
 
-          # Wait until localtunnel prints the URL (up to 30 seconds)
-          URL=""
-          for i in $(seq 1 15); do
-            URL=$(grep -o 'https://[a-zA-Z0-9-]*\.loca\.lt' /tmp/lt.log 2>/dev/null | head -1)
-            if [ -n "$URL" ]; then
-              break
-            fi
-            sleep 2
-          done
-
-          echo ""
-          echo "╔══════════════════════════════════════════════════╗"
-          echo "║           BINTUNET FRONTEND IS LIVE               ║"
-          echo "╠══════════════════════════════════════════════════╣"
-          echo "║  URL      : $URL"
-          echo "║  Password : $TUNNEL_PASS"
-          echo "╚══════════════════════════════════════════════════╝"
-          echo ""
-          echo "Open the URL above in your browser."
-          echo "When prompted for a password, enter: $TUNNEL_PASS"
-          echo ""
-
-          # Keep the tunnel alive for the rest of the job
-          wait $LT_PID
+            # Proxy uploaded logo files
+            location /uploads {
+              proxy_pass http://127.0.0.1:9090;
+              proxy_http_version 1.1;
+              proxy_set_header Host \$host;
+            }
