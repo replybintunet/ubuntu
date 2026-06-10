@@ -48,27 +48,63 @@ jobs:
           path: artifacts/bintunet/dist/public/
           retention-days: 7
 
-      - name: Configure nginx
+      - name: Configure and start nginx
         run: |
-          sudo tee /etc/nginx/sites-available/bintunet > /dev/null <<EOF
-          server {
-            listen 8080;
+          # Substitute the actual workspace path into the nginx config file
+          sed "s|WORKSPACE_PATH|$GITHUB_WORKSPACE|g" \
+            .github/nginx-bintunet.conf \
+            | sudo tee /etc/nginx/sites-available/bintunet > /dev/null
 
-            root $GITHUB_WORKSPACE/artifacts/bintunet/dist/public;
-            index index.html;
+          # Enable the site and disable the default
+          sudo ln -sf /etc/nginx/sites-available/bintunet /etc/nginx/sites-enabled/bintunet
+          sudo rm -f /etc/nginx/sites-enabled/default
 
-            # Proxy all API calls to the Node backend on port 9090
-            location /api {
-              proxy_pass http://127.0.0.1:9090;
-              proxy_http_version 1.1;
-              proxy_set_header Host \$host;
-              proxy_set_header X-Real-IP \$remote_addr;
-              proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            }
+          # Verify the config is valid, then start nginx
+          sudo nginx -t
+          sudo service nginx start
+          echo "nginx started on port 8080"
 
-            # Proxy uploaded logo files
-            location /uploads {
-              proxy_pass http://127.0.0.1:9090;
-              proxy_http_version 1.1;
-              proxy_set_header Host \$host;
-            }
+      - name: Print tunnel password
+        run: |
+          echo "========================================="
+          echo "YOUR TUNNEL PASSWORD IS:"
+          curl -s https://loca.lt/mytunnelpassword
+          echo ""
+          echo "========================================="
+
+      - name: Launch API server and expose via localtunnel
+        env:
+          PORT: 9090
+          NODE_ENV: production
+        run: |
+          # Start the API server on internal port 9090
+          # nginx proxies /api, /ws, /uploads to it and serves the frontend on 8080
+          node artifacts/api-server/dist/index.mjs &
+          sleep 5
+
+          # Start localtunnel and tee its output so we can grep the URL
+          lt --port 8080 2>&1 | tee /tmp/lt.log &
+          LT_PID=$!
+
+          # Wait up to 30 seconds for the URL to appear
+          URL=""
+          for i in $(seq 1 15); do
+            URL=$(grep -o 'https://[a-zA-Z0-9-]*\.loca\.lt' /tmp/lt.log 2>/dev/null | head -1)
+            if [ -n "$URL" ]; then break; fi
+            sleep 2
+          done
+
+          TUNNEL_PASS=$(curl -s https://loca.lt/mytunnelpassword)
+
+          echo ""
+          echo "╔══════════════════════════════════════════════════╗"
+          echo "║           BINTUNET FRONTEND IS LIVE               ║"
+          echo "╠══════════════════════════════════════════════════╣"
+          echo "║  URL      : $URL"
+          echo "║  Password : $TUNNEL_PASS"
+          echo "╚══════════════════════════════════════════════════╝"
+          echo ""
+          echo "Open the URL above, enter the password when prompted,"
+          echo "then log in with the BintuNet admin password."
+
+          # Keep alive until the tunnel closes
