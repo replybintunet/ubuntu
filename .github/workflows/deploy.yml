@@ -50,19 +50,19 @@ jobs:
 
       - name: Configure and start nginx
         run: |
-          # Substitute the actual workspace path into the nginx config file
-          sed "s|WORKSPACE_PATH|$GITHUB_WORKSPACE|g" \
-            .github/nginx-bintunet.conf \
-            | sudo tee /etc/nginx/sites-available/bintunet > /dev/null
+          # Copy built frontend to /var/www so nginx (www-data) can read it
+          sudo mkdir -p /var/www/bintunet
+          sudo cp -r $GITHUB_WORKSPACE/artifacts/bintunet/dist/public/. /var/www/bintunet/
 
-          # Enable the site and disable the default
+          # Install the nginx site config (hardcoded /var/www/bintunet root — no path substitution needed)
+          sudo cp .github/nginx-bintunet.conf /etc/nginx/sites-available/bintunet
           sudo ln -sf /etc/nginx/sites-available/bintunet /etc/nginx/sites-enabled/bintunet
           sudo rm -f /etc/nginx/sites-enabled/default
 
-          # Verify the config is valid, then start nginx
+          # Validate and start
           sudo nginx -t
           sudo service nginx start
-          echo "nginx started on port 8080"
+          echo "nginx started — serving static files from /var/www/bintunet on :8080"
 
       - name: Print tunnel password
         run: |
@@ -78,15 +78,16 @@ jobs:
           NODE_ENV: production
         run: |
           # Start the API server on internal port 9090
-          # nginx proxies /api, /ws, /uploads to it and serves the frontend on 8080
           node artifacts/api-server/dist/index.mjs &
           sleep 5
 
-          # Start localtunnel and tee its output so we can grep the URL
+          # Verify the API server is actually listening before opening the tunnel
+          curl -sf http://127.0.0.1:9090/api/health || echo "Warning: API server health check failed"
+
+          # Start localtunnel and capture the public URL
           lt --port 8080 2>&1 | tee /tmp/lt.log &
           LT_PID=$!
 
-          # Wait up to 30 seconds for the URL to appear
           URL=""
           for i in $(seq 1 15); do
             URL=$(grep -o 'https://[a-zA-Z0-9-]*\.loca\.lt' /tmp/lt.log 2>/dev/null | head -1)
@@ -104,7 +105,6 @@ jobs:
           echo "║  Password : $TUNNEL_PASS"
           echo "╚══════════════════════════════════════════════════╝"
           echo ""
-          echo "Open the URL above, enter the password when prompted,"
+          echo "Open the URL, enter the password when prompted,"
           echo "then log in with the BintuNet admin password."
 
-          # Keep alive until the tunnel closes
