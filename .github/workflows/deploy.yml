@@ -32,6 +32,9 @@ jobs:
         run: pnpm install --ignore-scripts
 
       - name: Build frontend
+        env:
+          PORT: 8080
+          NODE_ENV: production
         run: pnpm --filter @workspace/bintunet run build
 
       - name: Build API server
