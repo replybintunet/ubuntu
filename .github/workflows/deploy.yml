@@ -9,7 +9,7 @@ jobs:
   serve:
     name: Start server & expose public URL
     runs-on: ubuntu-latest
-    timeout-minutes: 360          # GitHub max — keeps it alive up to 6 hours
+    timeout-minutes: 300          # 5 hours — clean stop before GitHub's 6hr hard limit
 
     steps:
       # ── 1. Checkout ──────────────────────────────────────────────────────
@@ -90,58 +90,3 @@ jobs:
               break
             fi
             sleep 1
-          done
-
-      # ── 11. Open Cloudflare Quick Tunnel & print the public URL ──────────
-      - name: Start Cloudflare Tunnel
-        run: |
-          # cloudflared logs the URL to stderr — capture it
-          cloudflared tunnel --url http://localhost:8080 \
-            --no-autoupdate \
-            2>&1 | tee /tmp/cf_tunnel.log &
-          echo $! > /tmp/cf.pid
-
-          # Wait for the tunnel URL to appear in the log (up to 30s)
-          echo "Waiting for tunnel URL..."
-          for i in $(seq 1 30); do
-            URL=$(grep -oP 'https://[a-z0-9\-]+\.trycloudflare\.com' /tmp/cf_tunnel.log | head -1)
-            if [ -n "$URL" ]; then
-              echo ""
-              echo "╔══════════════════════════════════════════════════════╗"
-              echo "║  🚀 BintuNet is LIVE                                 ║"
-              echo "║                                                      ║"
-              echo "║  URL : $URL"
-              echo "║  Login password : bintunet                           ║"
-              echo "╚══════════════════════════════════════════════════════╝"
-              echo ""
-              echo "PUBLIC_URL=$URL" >> $GITHUB_ENV
-              break
-            fi
-            sleep 1
-          done
-
-          if [ -z "$URL" ]; then
-            echo "ERROR: Tunnel URL not found. Dumping log:"
-            cat /tmp/cf_tunnel.log
-            exit 1
-          fi
-
-      # ── 12. Keep alive (loop until server or tunnel dies) ─────────────────
-      - name: Keep alive
-        run: |
-          echo "Server running at $PUBLIC_URL"
-          echo "This job will keep running for up to 6 hours."
-          echo "Cancel the workflow in GitHub Actions to shut it down."
-          echo ""
-
-          while kill -0 $(cat /tmp/server.pid) 2>/dev/null && \
-                kill -0 $(cat /tmp/cf.pid) 2>/dev/null; do
-            sleep 30
-            # Heartbeat every 5 minutes
-            if [ $(( $(date +%s) % 300 )) -lt 30 ]; then
-              echo "$(date -u '+%H:%M:%S') ♥  $PUBLIC_URL — still alive"
-            fi
-          done
-
-          echo "A process exited — shutting down."
-          cat /tmp/cf_tunnel.log | tail -20
